@@ -18,9 +18,13 @@ class Generator : AbstractProcessor() {
         const val PACKAGE_NAME = "com.github.mazar1ni.deji"
         const val FILE_NAME = "GeneratedSingleton"
         const val ROOT_PACKAGE = "rootPackage"
+        const val INIT_FUNC = "<init>"
+        const val BUILD_CONFIG_PACKAGE = ".BuildConfig"
+        const val SET_FUNC_PREFIX = "set"
         var objBuilder: TypeSpec.Builder? = null
         var funBuilder: FunSpec.Builder? = null
         var rootPackage = PACKAGE_NAME
+        val stringClassName = ClassName("kotlin", "String")
     }
 
     override fun getSupportedSourceVersion(): SourceVersion {
@@ -55,7 +59,7 @@ class Generator : AbstractProcessor() {
             val typeElement = processingEnv.elementUtils.getTypeElement(it.asType().toString())
             processingEnv.elementUtils.getAllMembers(typeElement).forEach { el ->
                 if (el.annotationMirrors.find { ann -> ann.annotationType.toString() == Inject::class.java.name } != null) {
-                    objBuilder!!.addFunction(FunSpec.builder("set${
+                    objBuilder!!.addFunction(FunSpec.builder("$SET_FUNC_PREFIX${
                         it.simpleName.toString().replaceFirstChar { word -> word.uppercase() }
                     }_${el.simpleName}")
                         .addParameter(el.simpleName.toString(), ClassName.bestGuess(el.asType().toString())).addCode("${
@@ -66,7 +70,7 @@ class Generator : AbstractProcessor() {
 
             var constructorParameters = listOf<String>()
             it.enclosedElements.forEach { el ->
-                if (el.simpleName.toString() == "<init>") {
+                if (el.simpleName.toString() == INIT_FUNC) {
                     val parameters = el.asType().toString().replace("(", "").replace(")void", "")
                     if (parameters.isNotEmpty())
                         constructorParameters = parameters.split(",")
@@ -90,7 +94,7 @@ class Generator : AbstractProcessor() {
                             .mutable(true).build()
                     )
 
-                    objBuilder!!.addFunction(FunSpec.builder("set${
+                    objBuilder!!.addFunction(FunSpec.builder("$SET_FUNC_PREFIX${
                         it.simpleName.toString().replaceFirstChar { word -> word.uppercase() }
                     }_$nameParam").addParameter(nameParam, ClassName.bestGuess(param))
                         .addCode("this.$nameParam = $nameParam").build())
@@ -121,7 +125,7 @@ class Generator : AbstractProcessor() {
             )
             var needCreate = false
             it.enclosedElements.forEach { el ->
-                if (el.simpleName.toString() == "<init>") {
+                if (el.simpleName.toString() == INIT_FUNC) {
                     needCreate = true
                 } else if (needCreate) {
                     val className = ClassName.bestGuess(el.asType().toString()
@@ -140,7 +144,7 @@ class Generator : AbstractProcessor() {
 
                 val typeElement = processingEnv.elementUtils.getTypeElement("$pack.$FILE_NAME")
                 processingEnv.elementUtils.getAllMembers(typeElement).forEach { member ->
-                    if (member.simpleName.contains("set") && member.kind == ElementKind.METHOD) {
+                    if (member.simpleName.contains(SET_FUNC_PREFIX) && member.kind == ElementKind.METHOD) {
                         funBuilder!!.addCode("$pack.$FILE_NAME.${member.simpleName}(${
                             member.simpleName.toString()
                                 .removeRange(
@@ -155,7 +159,7 @@ class Generator : AbstractProcessor() {
         elementsWithDISingletonRoom?.forEach {
             var needCreate = false
             it.enclosedElements.forEach { el ->
-                if (el.simpleName.toString() == "<init>") {
+                if (el.simpleName.toString() == INIT_FUNC) {
                     needCreate = true
                 } else if (needCreate) {
                     val className = ClassName.bestGuess(el.asType().toString().removeRange(0, 2))
@@ -176,15 +180,15 @@ class Generator : AbstractProcessor() {
 
         if (rootPackage == PACKAGE_NAME) {
             roundEnv?.rootElements?.forEach {
-                if (it.toString().contains(".BuildConfig")) {
-                    rootPackage = it.toString().replace(".BuildConfig", "")
+                if (it.toString().contains(BUILD_CONFIG_PACKAGE)) {
+                    rootPackage = it.toString().replace(BUILD_CONFIG_PACKAGE, "")
                 }
             }
         }
 
         if (objBuilder != null && roundEnv?.processingOver() == true) {
             objBuilder!!.addProperty(
-                PropertySpec.builder(ROOT_PACKAGE, ClassName("kotlin", "String")).addModifiers(KModifier.CONST)
+                PropertySpec.builder(ROOT_PACKAGE, stringClassName).addModifiers(KModifier.CONST)
                     .mutable(false).initializer("\"$rootPackage\"").build()
             )
 

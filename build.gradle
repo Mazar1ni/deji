@@ -7,7 +7,7 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'maven-publish'
 
 group 'com.github.mazar1ni'
-version '1.0.0'
+version '1.0.1'
 
 repositories {
     mavenCentral()
@@ -32,7 +32,7 @@ publishing {
         mavenJava(MavenPublication) {
             groupId = 'com.github.mazar1ni'
             artifactId = 'diji'
-            version = '1.0'
+            version = '1.0.1'
 
             from components.java
 
